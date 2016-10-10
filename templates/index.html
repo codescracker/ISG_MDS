@@ -33,8 +33,6 @@
             stroke-width: 2px;
         }
 
-            display: none;
-        }
 
     </style>
 
@@ -50,7 +48,8 @@
                 </div>
 
             </div>
-            <div class="col-sm-12" id="scatterplot">
+                <div class="col-sm-12" id="scatterplot">
+                <button id="btn">Post New Position</button>
             </div>
         </div>
     </div>
@@ -65,6 +64,7 @@
 
     function makeGraph(error, recordJson) {
         var records = recordJson;
+        console.log(records);
         var canvas_width = 900;
         var canvas_height = 500;
         var padding = 30;  // for chart edges
@@ -117,10 +117,10 @@
                 .domain([canvas_height - padding, padding])
                 .range([
                     d3.min(records, function (d) {
-                        return d.x
+                        return d.y;
                     }),
                     d3.max(records, function (d) {
-                        return d.x;  // input domain
+                        return d.y;  // input domain
                     })]);
 
 
@@ -185,8 +185,8 @@
                 .on('mouseover', function(d){
                     var xPosition = "X: "+d.x;
                     var yPosition = "Y: "+d.y;
-                    var mouse = d3.mouse(this).map(function(coord) {
-                        return parseInt(coord);
+                    var mouse = d3.mouse(this).map(function(coordinate) {
+                        return parseInt(coordinate);
                     });
                     tip.attr('x', (mouse[0]))
                             .attr('y', (mouse[1]));
@@ -206,14 +206,15 @@
 
         function dragstarted(d) {
             d3.select(this).raise().classed("active", true);
+
         };
 
         function dragged(d) {
-            var scaledX = xScale(d.x);
-            var scaledY = yScale(d.y);
-            console.log("scaledX: "+scaledX);
-            console.log("scaledY: "+scaledY);
-            d3.select(this).attr("cx",  d3.event.x).attr("cy", d3.event.y);
+            d.x = reversexScale(d3.mouse(this)[0]);
+            d.y = reverseyScale(d3.mouse(this)[1]);
+            console.log(d.x+','+d.y);
+            d3.select(this).attr("cx", d3.mouse(this)[0]).attr("cy", d3.mouse(this)[1]);
+            console.log(JSON.stringify(records));
         };
 
         function dragended(d) {
@@ -231,6 +232,24 @@
                 .attr("transform", "translate(" + padding +",0)")
                 .call(yAxis);
 
+
+        $(function () {
+            $('#btn').click(function () {
+                $.ajax({
+                    url: '/post',
+                    data: JSON.stringify(records),
+                    type: 'POST',
+                    success: function (response) {
+                        alert(response.message);
+                    },
+                    error: function (error) {
+                        console.log(error);
+                    },
+                    contentType: "application/json",
+                    dataType: 'json'
+                });
+            });
+        });
 
     }
 
