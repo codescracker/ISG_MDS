@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, jsonify
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn import manifold
-from sklearn.metrics import euclidean_distances
+from distance import *
 import numpy as np
 import json
 
@@ -32,7 +32,8 @@ def loadData():
     # Combine the class and features according to the index
     df_clean = pd.concat([className, scaled_df], axis=1, join_axes=[df.index])
     # Measure the similarity of records using euclidean distance
-    similarities = euclidean_distances(scaled_df)
+    WEIGHT_INITIAL = np.array([1/len(scaled_dt[0]) for i in range(0, len(scaled_dt[0]))])
+    similarities = dist_func(scaled_df, WEIGHT_INITIAL)
     seed = np.random.RandomState(seed=3)
     # set up the parameter of MDS
     mds = manifold.MDS(n_components=2, max_iter=3000, eps=1e-9,
