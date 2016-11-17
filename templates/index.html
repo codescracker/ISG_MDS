@@ -69,7 +69,7 @@
         }
 
         var records = recordJson;
-        console.log(records);
+{#        console.log(records);#}
         var canvas_width = 900;
         var canvas_height = 500;
         var padding = 30;  // for chart edges
@@ -217,9 +217,9 @@
         function dragged(d) {
             d.x = reversexScale(d3.mouse(this)[0]);
             d.y = reverseyScale(d3.mouse(this)[1]);
-            console.log(d.x+','+d.y);
+            console.log(d.x+','+d.y + ',' + d.Class);
             d3.select(this).attr("cx", d3.mouse(this)[0]).attr("cy", d3.mouse(this)[1]);
-            console.log(JSON.stringify(records));
+{#            console.log(JSON.stringify(records));#}
         };
 
         function dragended(d) {

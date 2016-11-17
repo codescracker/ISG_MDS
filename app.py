@@ -22,7 +22,7 @@ def getOriginalDf():
                                                 'OD280/OD315 of diluted wines',
                                                 'Proline'
                                                 ])
-    return df
+    return df.ix[[0, 1, 2, 3]]
 
 
 def getScaledDt(df):
@@ -42,7 +42,7 @@ def get2DimsDt(dt, weight):
     mds = manifold.MDS(n_components=2, max_iter=3000, eps=1e-9,
                        random_state=seed, dissimilarity="precomputed", n_jobs=1)
     dt_2Dims = mds.fit(similarity).embedding_
-
+    print(dt_2Dims)
     return dt_2Dims
 
 
@@ -56,7 +56,7 @@ def get2DimDtWithClass(dt_2dims, df):
 
 # return numpy array
 def format2dtWithoutClass(post_dict):
-    res = [[point["x"],point["y"]] for point in post_dict]
+    res = [[point["x"], point["y"]] for point in post_dict]
     return np.array(res)
 
 WEIGHT_4_2DIMS = [0.5, 0.5]
