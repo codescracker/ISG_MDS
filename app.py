@@ -22,7 +22,7 @@ def getOriginalDf():
                                                 'OD280/OD315 of diluted wines',
                                                 'Proline'
                                                 ])
-    return df.ix[[0, 1, 2, 3]]
+    return df.ix[[0, 1, 2, 3, 4, 5, 6]]
 
 
 def getScaledDt(df):
@@ -87,7 +87,7 @@ def post():
     global DT_2Dims_after
     DT_2Dims_after = format2dtWithoutClass(json_dic)
 
-    print(DT_2Dims_after)
+    print("Post DT_2Dims_after", DT_2Dims_after)
     return jsonify(({
             "status": "success",
             "message": "Your post is successful"
@@ -102,17 +102,19 @@ def new_weight():
     global INITIAL_WEIGHT
 
     if DT_2Dims_after is None:
-        print(DT_2Dims_after)
+        print("DT_2Dims_after:\n", DT_2Dims_after)
         return jsonify({
             "message": "Please post the new position first"
         })
     else:
         dist_after = dist_func(DT_2Dims_after, WEIGHT_4_2DIMS)
         dist_before = dist_func(DT_2Dims_before, WEIGHT_4_2DIMS)
+        print("dist_after:", dist_after)
+        print("dist_before:", dist_before)
         u = umatrix(dist_after, dist_before)
         l = lmatrix(u)
-        print(u)
-        print(l)
+        print('u:', u)
+        print('l:', l)
 
         def object_function(x, sign=1.0):
             n = len(DT)
@@ -173,13 +175,14 @@ def new_weight():
         bnds = tuple([(0, None)] * len(DT[0]))
 
         res = minimize(object_function, list(INITIAL_WEIGHT), jac=object_func_drive, bounds=bnds,
-                       constraints=cons, method='SLSQP', options={'disp': True})
+                       constraints=cons, method='SLSQP', options={'disp': True, 'maxiter': 5000})
         weight_new = res.x
-        print(weight_new)
+        print("New Weight", weight_new)
         INITIAL_WEIGHT = weight_new
 
         DT_2Dims_before = get2DimsDt(DT, INITIAL_WEIGHT)
-        # print(DT_2Dims_before)
+        print("New DT_2dims_before", DT_2Dims_before)
+        DT_2Dims_after = None
         return jsonify({
             "message": "Get the new weight"
         })
