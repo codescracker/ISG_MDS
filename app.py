@@ -7,20 +7,21 @@ import numpy as np
 from scipy.optimize import minimize
 import json
 
+
 # /home/shaowei/PycharmProjects/ISG_MDS/input/wine.csv
 def getOriginalDf():
     # Read the wine data into pandas dataframe, and name the feature
-    df = pd.read_csv('/home/shaowei/PycharmProjects/ISG_MDS/input/wine.csv', names=['Class', 'Alcohol', 'Malic acid',
-                                                                                    'Ash', 'Alcalinity of ash ',
-                                                                                    'Magnesium',
-                                                                                    'Total phenols', 'Flavanoids',
-                                                                                    'Nonflavanoid phenols',
-                                                                                    'Proanthocyanins',
-                                                                                    'Color intensity',
-                                                                                    'Hue',
-                                                                                    'OD280/OD315 of diluted wines',
-                                                                                    'Proline'
-                                                                                    ])
+    df = pd.read_csv('./input/wine.csv', names=['Class', 'Alcohol', 'Malic acid',
+                                                'Ash', 'Alcalinity of ash ',
+                                                'Magnesium',
+                                                'Total phenols', 'Flavanoids',
+                                                'Nonflavanoid phenols',
+                                                'Proanthocyanins',
+                                                'Color intensity',
+                                                'Hue',
+                                                'OD280/OD315 of diluted wines',
+                                                'Proline'
+                                                ])
     return df
 
 
@@ -50,14 +51,13 @@ def get2DimDtWithClass(dt_2dims, df):
     df_2dims = pd.DataFrame(dt_2dims, columns=['x', 'y'])
     classname = df["Class"]
     df_withclass = pd.concat([df_2dims, classname], axis=1)
-    return df_withclass.to_json(orident="records")
+    return df_withclass.to_json(orient="records")
 
 
-# return dictionary
+# return numpy array
 def format2dtWithoutClass(post_dict):
-    for point in post_dict:
-        point.pop("Class")
-    return post_dict
+    res = [[point["x"],point["y"]] for point in post_dict]
+    return np.array(res)
 
 WEIGHT_4_2DIMS = [0.5, 0.5]
 DF = getOriginalDf()
@@ -86,6 +86,8 @@ def post():
     json_dic = request.json
     global DT_2Dims_after
     DT_2Dims_after = format2dtWithoutClass(json_dic)
+
+    print(DT_2Dims_after)
     return jsonify(({
             "status": "success",
             "message": "Your post is successful"
@@ -99,7 +101,8 @@ def new_weight():
     global WEIGHT_4_2DIMS
     global INITIAL_WEIGHT
 
-    if not DT_2Dims_after:
+    if DT_2Dims_after is None:
+        print(DT_2Dims_after)
         return jsonify({
             "message": "Please post the new position first"
         })
@@ -108,6 +111,8 @@ def new_weight():
         dist_before = dist_func(DT_2Dims_before, WEIGHT_4_2DIMS)
         u = umatrix(dist_after, dist_before)
         l = lmatrix(u)
+        print(u)
+        print(l)
 
         def object_function(x, sign=1.0):
             n = len(DT)
@@ -170,10 +175,11 @@ def new_weight():
         res = minimize(object_function, list(INITIAL_WEIGHT), jac=object_func_drive, bounds=bnds,
                        constraints=cons, method='SLSQP', options={'disp': True})
         weight_new = res.x
-
+        print(weight_new)
         INITIAL_WEIGHT = weight_new
 
         DT_2Dims_before = get2DimsDt(DT, INITIAL_WEIGHT)
+        # print(DT_2Dims_before)
         return jsonify({
             "message": "Get the new weight"
         })
