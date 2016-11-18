@@ -5,7 +5,7 @@ from sklearn import manifold
 from distance import *
 import numpy as np
 from scipy.optimize import minimize
-import json
+import time
 
 
 # /home/shaowei/PycharmProjects/ISG_MDS/input/wine.csv
@@ -22,7 +22,7 @@ def getOriginalDf():
                                                 'OD280/OD315 of diluted wines',
                                                 'Proline'
                                                 ])
-    return df.ix[[0, 1, 2, 3, 4, 5, 6]]
+    return df[0:50]
 
 
 def getScaledDt(df):
@@ -42,7 +42,7 @@ def get2DimsDt(dt, weight):
     mds = manifold.MDS(n_components=2, max_iter=3000, eps=1e-9,
                        random_state=seed, dissimilarity="precomputed", n_jobs=1)
     dt_2Dims = mds.fit(similarity).embedding_
-    print(dt_2Dims)
+    # print(dt_2Dims)
     return dt_2Dims
 
 
@@ -74,6 +74,11 @@ app = Flask(__name__)
 @app.route('/')
 def index():
     return render_template('index.html')
+
+
+@app.route('/weight_data', methods=['GET'])
+def get_weight():
+    return jsonify(list(INITIAL_WEIGHT))
 
 
 @app.route('/data')
@@ -174,8 +179,11 @@ def new_weight():
 
         bnds = tuple([(0, None)] * len(DT[0]))
 
+        print("Ready to start the iteration process of getting the optimized weight")
+        start_time = time.time()
         res = minimize(object_function, list(INITIAL_WEIGHT), jac=object_func_drive, bounds=bnds,
                        constraints=cons, method='SLSQP', options={'disp': True, 'maxiter': 5000})
+        print("It costs", time.time()-start_time, "seconds to get optimized solution")
         weight_new = res.x
         print("New Weight", weight_new)
         INITIAL_WEIGHT = weight_new

@@ -24,6 +24,7 @@
             font-family: sans-serif;
             font-size: 11px;
         }
+
         text {
             color: #333333;
         }
@@ -33,56 +34,80 @@
             stroke-width: 2px;
         }
 
+        .bar {
+            fill: steelblue;
+        }
+
+        .bar:hover {
+            fill: brown;
+        }
+
+        .axis--x path {
+            display: none;
+        }
+
 
     </style>
 
 </head>
 <body>
-    <div class="container-fluid">
-        <div class="text-center">
-            <div class="panel-group">
+<div class="container-fluid">
+    <div class="text-center">
+        <div class="panel-group">
 
-                <div class="page-header">
-                    <h1 class="panel-heading alert alert-info">D3 MDS Scatterplot</h1>
-                    <div class="panel-body">- This is a data visualization using MDS to fulfill dimension reductions</div>
-                </div>
-
+            <div class="page-header">
+                <h1 class="panel-heading alert alert-info">D3 MDS Scatterplot</h1>
+                <div class="panel-body">- This is a data visualization using MDS to fulfill dimension reductions</div>
             </div>
-                <div class="col-sm-12" id="scatterplot"></div>
-                <button id="btn_post" type="button" class="btn btn-primary center-block">Post New Position</button>
-                <button id ="btn_weight" type="button" class="btn btn-primary center-block">Calculate New Weight</button>
-                <button id = "btn_chart" type="button" class="btn btn-primary center-block">Draw New Scatter Plot</button>
+
         </div>
+
+        <div class="row">
+            <div class="col-sm-6" id="scatterplot"></div>
+            <div class="col-sm-6" id="barchart"></div>
+        </div>
+
+
+        <div class="btn-group" role="group" aria-label="Basic example">
+            <button id="btn_post" type="button" class="btn btn-primary center-block">Post New Position</button>
+            <button id="btn_weight" type="button" class="btn btn-primary center-block">Calculate New Weight</button>
+            <button id="btn_chart" type="button" class="btn btn-primary center-block">Draw New Scatter Plot</button>
+        </div>
+
     </div>
+</div>
 
 
-
-    <script type="text/javascript">
+<script type="text/javascript">
 
     d3.queue()
-            .defer(d3.json,'/data')
+            .defer(d3.json, '/data')
+            .defer(d3.json, '/weight_data')
             .await(makeGraph);
 
-    function makeGraph(error, recordJson) {
-        if (error){
+    function makeGraph(error, recordJson, weightJson) {
+        if (error) {
             console.log(error);
         }
 
+        var weights = weightJson;
         var records = recordJson;
-{#        console.log(records);#}
-        var canvas_width = 900;
+        {#        console.log(records);#}
+        var canvas_width = $(window).width() * (5 / 12); //900
         var canvas_height = 500;
         var padding = 30;  // for chart edges
 
-        var colorMap = {
-            "1" : "red",
-            "2" : "green",
-            "3" : "blue"
-        };
+        {#        var colorMap = {#}
+        {#            "1": "red",#}
+        {#            "2": "green",#}
+        {#            "3": "blue"#}
+        {#        };#}
+        {##}
+        {#        function color(type, map) {#}
+        {#            return map[type];#}
+        {#        }#}
 
-        function color(type,map){
-            return map[type];
-        }
+        var color_10 = d3.scaleOrdinal(d3.schemeCategory10);
 
         // Create scale functions
         var xScale = d3.scaleLinear()  // xScale is width of graphic
@@ -93,10 +118,10 @@
                     d3.max(records, function (d) {
                         return d.x;  // input domain
                     })])
-                .range([padding, canvas_width - padding * 2]); // output range
+                .range([padding, canvas_width - padding]); // output range
 
         var reversexScale = d3.scaleLinear()
-                .domain([padding, canvas_width - padding * 2])
+                .domain([padding, canvas_width - padding])
                 .range([
                     d3.min(records, function (d) {
                         return d.x
@@ -155,56 +180,56 @@
 
         var tip = svg.append("text")
                 .attr('class', 'tip')
-                .attr('x',0)
-                .attr('y',0)
-                .attr('dy','0.71em')
+                .attr('x', 0)
+                .attr('y', 0)
+                .attr('dy', '0.71em')
                 .attr('style', 'text-anchor: middle');
 
         var tipX = tip.append('tspan')
                 .text('')
-                .attr('id','tipX')
+                .attr('id', 'tipX')
 
 
         var tipY = tip.append('tspan')
                 .text('')
-                .attr('id','tipY')
-                .attr('x',0)
-                .attr('dy',10);
+                .attr('id', 'tipY')
+                .attr('x', 0)
+                .attr('dy', 10);
 
 
         svg.selectAll("circle")
                 .data(records)
                 .enter()
                 .append("circle")  // Add circle svg
-                .attr("cx", function(d) {
+                .attr("cx", function (d) {
                     return xScale(d.x);  // Circle's X
                 })
-                .attr("cy", function(d) {  // Circle's Y
+                .attr("cy", function (d) {  // Circle's Y
                     return yScale(d.y);
                 })
-                .attr("r",5) // radius2
+                .attr("r", 5) // radius2
                 .attr("opacity", 0.5)
                 .attr("fill", function (d) {
-                    return color(d.Class,colorMap);
+                    return color_10(d.Class);
                 })
-                .on('mouseover', function(d){
-                    var xPosition = "X: "+d.x;
-                    var yPosition = "Y: "+d.y;
-                    var mouse = d3.mouse(this).map(function(coordinate) {
+                .on('mouseover', function (d) {
+                    var xPosition = "X: " + d.x;
+                    var yPosition = "Y: " + d.y;
+                    var mouse = d3.mouse(this).map(function (coordinate) {
                         return parseInt(coordinate);
                     });
                     tip.attr('x', (mouse[0]))
                             .attr('y', (mouse[1]));
 
                     d3.select('#tipX').text(xPosition);
-                    d3.select('#tipY').text(yPosition).attr('x',mouse[0]);
+                    d3.select('#tipY').text(yPosition).attr('x', mouse[0]);
                 })
-                .on('mouseout', function() {
+                .on('mouseout', function () {
                     d3.select('#tipX').text('');
                     d3.select('#tipY').text('');
                 })
                 .call(d3.drag()
-                        .on('start',dragstarted)
+                        .on('start', dragstarted)
                         .on('drag', dragged)
                         .on('end', dragended));
 
@@ -217,9 +242,9 @@
         function dragged(d) {
             d.x = reversexScale(d3.mouse(this)[0]);
             d.y = reverseyScale(d3.mouse(this)[1]);
-            console.log(d.x+','+d.y + ',' + d.Class);
+            console.log(d.x + ',' + d.y + ',' + d.Class);
             d3.select(this).attr("cx", d3.mouse(this)[0]).attr("cy", d3.mouse(this)[1]);
-{#            console.log(JSON.stringify(records));#}
+            {#            console.log(JSON.stringify(records));#}
         };
 
         function dragended(d) {
@@ -228,14 +253,68 @@
 
         svg.append("g")
                 .attr("class", "x axis")
-                .attr("transform", "translate(0," + (canvas_height - padding) +")")
+                .attr("transform", "translate(0," + (canvas_height - padding) + ")")
                 .call(xAxis);
 
         // Add to Y axis
         svg.append("g")
                 .attr("class", "y axis")
-                .attr("transform", "translate(" + padding +",0)")
+                .attr("transform", "translate(" + padding + ",0)")
                 .call(yAxis);
+
+
+        var svg_bar = d3.select("#barchart")
+                        .append("svg")
+                        .attr("id","svg_bar")
+                        .attr("width", $(window).width() * (5 / 12))
+                        .attr("height", 500),
+                margin_bar = {top: 20, right: 20, bottom: 30, left: 40},
+                width_bar = +svg_bar.attr("width") - margin_bar.left - margin_bar.right,
+                height_bar = +svg_bar.attr("height") - margin_bar.top - margin_bar.bottom;
+
+        var x_bar = d3.scaleBand().rangeRound([0, width_bar]).padding(0.1),
+                y_bar = d3.scaleLinear().rangeRound([height_bar, 0]);
+
+        var g_bar = svg_bar.append("g")
+                .attr("transform", "translate(" + margin_bar.left + "," + margin_bar.top + ")");
+
+        x_bar.domain(weights.map(function (d, i) {
+            return i;
+        }));
+        y_bar.domain([0, d3.max(weights, function (d) {
+            return d;
+        })]);
+
+
+        g_bar.append("g")
+                .attr("class", "axis axis--x")
+                .attr("transform", "translate(0," + height_bar + ")")
+                .call(d3.axisBottom(x_bar));
+
+        g_bar.append("g")
+                .attr("class", "axis axis--y")
+                .call(d3.axisLeft(y_bar).ticks(10, "%"))
+                .append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 6)
+                .attr("dy", "0.71em")
+                .attr("text-anchor", "end")
+                .text("Frequency");
+
+        g_bar.selectAll(".bar")
+                .data(weights)
+                .enter().append("rect")
+                .attr("class", "bar")
+                .attr("x", function (d, i) {
+                    return x_bar(i);
+                })
+                .attr("y", function (d) {
+                    return y_bar(d);
+                })
+                .attr("width", x_bar.bandwidth())
+                .attr("height", function (d) {
+                    return height_bar - y_bar(d);
+                });
 
 
         $(function () {
@@ -274,11 +353,13 @@
             });
         });
 
-
+        $(function () {
+            $('#btn_chart').click(function () {
+                location.reload();
+            })
+        })
 
     }
-
-
 
 
 </script>
