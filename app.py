@@ -11,23 +11,13 @@ import time
 # /home/shaowei/PycharmProjects/ISG_MDS/input/wine.csv
 def getOriginalDf():
     # Read the wine data into pandas dataframe, and name the feature
-    df = pd.read_csv('./input/wine.csv', names=['Class', 'Alcohol', 'Malic acid',
-                                                'Ash', 'Alcalinity of ash ',
-                                                'Magnesium',
-                                                'Total phenols', 'Flavanoids',
-                                                'Nonflavanoid phenols',
-                                                'Proanthocyanins',
-                                                'Color intensity',
-                                                'Hue',
-                                                'OD280/OD315 of diluted wines',
-                                                'Proline'
-                                                ])
-    return df[0:50]
+    df = pd.read_csv('./input/wine_clean.csv')
+    return df
 
 
 def getScaledDt(df):
     # Extract the name of features
-    columnName = df.columns[1:]
+    columnName = df.columns[2:]
     # Extract the feature from pandas dataframe according to the feature names
     dt4Scale = df[columnName]
     # StandardScaler the data
@@ -49,7 +39,7 @@ def get2DimsDt(dt, weight):
 # return json
 def get2DimDtWithClass(dt_2dims, df):
     df_2dims = pd.DataFrame(dt_2dims, columns=['x', 'y'])
-    classname = df["Class"]
+    classname = df[["Class","id"]]
     df_withclass = pd.concat([df_2dims, classname], axis=1)
     return df_withclass.to_json(orient="records")
 
@@ -74,6 +64,11 @@ app = Flask(__name__)
 @app.route('/')
 def index():
     return render_template('index.html')
+
+
+@app.route('/highDims_data')
+def get_highDims_data():
+    return DF.to_json(orient='records')
 
 
 @app.route('/weight_data', methods=['GET'])

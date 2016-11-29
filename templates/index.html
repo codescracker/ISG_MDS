@@ -11,6 +11,8 @@
     <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.2.6/d3.js"></script>
     <script src="http://d3js.org/queue.v1.min.js"></script>
+
+
     <style type="text/css">
         /* Format X and Y Axis */
         .axis path,
@@ -23,6 +25,7 @@
         .axis text {
             font-family: sans-serif;
             font-size: 11px;
+            fill: black;
         }
 
         text {
@@ -46,6 +49,11 @@
             display: none;
         }
 
+        .foreground path {
+            fill: none;
+            stroke: steelblue;
+        }
+
 
     </style>
 
@@ -66,7 +74,7 @@
             <div class="col-sm-6" id="scatterplot"></div>
             <div class="col-sm-6" id="barchart"></div>
         </div>
-
+        <div id="coor"></div>
 
         <div class="btn-group" role="group" aria-label="Basic example">
             <button id="btn_post" type="button" class="btn btn-primary center-block">Post New Position</button>
@@ -83,238 +91,423 @@
     d3.queue()
             .defer(d3.json, '/data')
             .defer(d3.json, '/weight_data')
+            .defer(d3.json, '/highDims_data')
             .await(makeGraph);
 
-    function makeGraph(error, recordJson, weightJson) {
+    function makeGraph(error, recordJson, weightJson, featureJson) {
         if (error) {
             console.log(error);
         }
 
         var weights = weightJson;
         var records = recordJson;
-        {#        console.log(records);#}
-        var canvas_width = $(window).width() * (5 / 12); //900
-        var canvas_height = 500;
-        var padding = 30;  // for chart edges
-
-        {#        var colorMap = {#}
-        {#            "1": "red",#}
-        {#            "2": "green",#}
-        {#            "3": "blue"#}
-        {#        };#}
-        {##}
-        {#        function color(type, map) {#}
-        {#            return map[type];#}
-        {#        }#}
-
+        var features = featureJson;
         var color_10 = d3.scaleOrdinal(d3.schemeCategory10);
 
-        // Create scale functions
-        var xScale = d3.scaleLinear()  // xScale is width of graphic
-                .domain([
-                    d3.min(records, function (d) {
-                        return d.x
-                    }),
-                    d3.max(records, function (d) {
-                        return d.x;  // input domain
-                    })])
-                .range([padding, canvas_width - padding]); // output range
+        scatterplot();
+        barchart();
+        coordinates();
 
-        var reversexScale = d3.scaleLinear()
-                .domain([padding, canvas_width - padding])
-                .range([
-                    d3.min(records, function (d) {
-                        return d.x
-                    }),
-                    d3.max(records, function (d) {
-                        return d.x;  // input domain
-                    })]);
+        function scatterplot() {
+            var canvas_width = $(window).width() * (5 / 12);
+            var canvas_height = 500;
+            var padding = 30;  // for chart edges
+
+            {#        var colorMap = {#}
+            {#            "1": "red",#}
+            {#            "2": "green",#}
+            {#            "3": "blue"#}
+            {#        };#}
+            {##}
+            {#        function color(type, map) {#}
+            {#            return map[type];#}
+            {#        }#}
 
 
-        var yScale = d3.scaleLinear()  // yScale is height of graphic
-                .domain([
-                    d3.min(records, function (d) {
-                        return d.y
+            // Create scale functions
+            var xScale = d3.scaleLinear()  // xScale is width of graphic
+                    .domain([
+                        d3.min(records, function (d) {
+                            return d.x
+                        }),
+                        d3.max(records, function (d) {
+                            return d.x;  // input domain
+                        })])
+                    .range([padding, canvas_width - padding]); // output range
+
+            var reversexScale = d3.scaleLinear()
+                    .domain([padding, canvas_width - padding])
+                    .range([
+                        d3.min(records, function (d) {
+                            return d.x
+                        }),
+                        d3.max(records, function (d) {
+                            return d.x;  // input domain
+                        })]);
+
+
+            var yScale = d3.scaleLinear()  // yScale is height of graphic
+                    .domain([
+                        d3.min(records, function (d) {
+                            return d.y
+                        })
+                        ,
+                        d3.max(records, function (d) {
+                            return d.y;  // input domain
+                        })])
+                    .range([canvas_height - padding, padding]);  // remember y starts on top going down so we flip
+
+
+            var reverseyScale = d3.scaleLinear()
+                    .domain([canvas_height - padding, padding])
+                    .range([
+                        d3.min(records, function (d) {
+                            return d.y;
+                        }),
+                        d3.max(records, function (d) {
+                            return d.y;  // input domain
+                        })]);
+
+
+            var xAxis = d3.axisBottom(xScale);
+
+            var yAxis = d3.axisLeft(yScale);
+
+
+            // Create SVG element
+            var svg = d3.select("#scatterplot")  // This is where we put our vis
+                    .append("svg")
+                    .attr("width", canvas_width)
+                    .attr("height", canvas_height)
+
+            svg.append("text")
+                    .attr("x", canvas_width)
+                    .attr("y", canvas_height)
+                    .attr("text-anchor", "end")
+                    .text("X: First Component");
+
+            svg.append("text")
+                    .attr("y", 6)
+                    .attr("dy", ".25em")
+                    .attr("transform", "rotate(-90)")
+                    .attr("text-anchor", "end")
+                    .text("Y: Second Component");
+
+            var tip = svg.append("text")
+                    .attr('class', 'tip')
+                    .attr('x', 0)
+                    .attr('y', 0)
+                    .attr('dy', '0.71em')
+                    .attr('style', 'text-anchor: middle');
+
+            var tipX = tip.append('tspan')
+                    .text('')
+                    .attr('id', 'tipX');
+
+
+            var tipY = tip.append('tspan')
+                    .text('')
+                    .attr('id', 'tipY')
+                    .attr('x', 0)
+                    .attr('dy', 10);
+
+
+            svg.append("g")
+                    .attr("id", "dotgroup")
+                    .selectAll("circle")
+                    .data(records)
+                    .enter()
+                    .append("circle")  // Add circle svg
+                    .attr("cx", function (d) {
+                        return xScale(d.x);  // Circle's X
                     })
-                    ,
-                    d3.max(records, function (d) {
-                        return d.y;  // input domain
-                    })])
-                .range([canvas_height - padding, padding]);  // remember y starts on top going down so we flip
+                    .attr("cy", function (d) {  // Circle's Y
+                        return yScale(d.y);
+                    })
+                    .attr("r", 5) // radius2
+                    .style("opacity", 1.0)
+                    .attr("fill", function (d) {
+                        return color_10(d.Class);
+                    })
+                    .attr("id", function (d) {
+                        return "dot" + d.id;
+                    })
+                    .on('mouseover', function (d) {
+                        var xPosition = "X: " + d.x;
+                        var yPosition = "Y: " + d.y;
+                        var mouse = d3.mouse(this).map(function (coordinate) {
+                            return parseInt(coordinate);
+                        });
+                        tip.attr('x', (mouse[0]))
+                                .attr('y', (mouse[1]));
+
+                        d3.select('#tipX').text(xPosition);
+                        d3.select('#tipY').text(yPosition).attr('x', mouse[0]);
+                        notify("showcoor", "dot" + d.id);
+                        notify("vagueotherdots", "dot" + d.id);
+                    })
+                    .on('mouseout', function (d) {
+                        d3.select('#tipX').text('');
+                        d3.select('#tipY').text('');
+                        notify("hidecoor", "dot" + d.id ,d.Class);
+                        notify("clearotherdots", "dot" + d.id);
+                    })
+                    .call(d3.drag()
+                            .on('start', dragstarted)
+                            .on('drag', dragged)
+                            .on('end', dragended));
 
 
-        var reverseyScale = d3.scaleLinear()
-                .domain([canvas_height - padding, padding])
-                .range([
-                    d3.min(records, function (d) {
-                        return d.y;
-                    }),
-                    d3.max(records, function (d) {
-                        return d.y;  // input domain
-                    })]);
+            function dragstarted(d) {
+                d3.select(this).raise().classed("active", true);
+
+            };
+
+            function dragged(d) {
+                d.x = reversexScale(d3.mouse(this)[0]);
+                d.y = reverseyScale(d3.mouse(this)[1]);
+                console.log(d.x + ',' + d.y + ',' + d.Class);
+                d3.select(this).attr("cx", d3.mouse(this)[0]).attr("cy", d3.mouse(this)[1]);
+
+            };
+
+            function dragended(d) {
+                d3.select(this).classed("active", false);
+            };
+
+            svg.append("g")
+                    .attr("class", "x axis")
+                    .attr("transform", "translate(0," + (canvas_height - padding) + ")")
+                    .call(xAxis);
+
+            // Add to Y axis
+            svg.append("g")
+                    .attr("class", "y axis")
+                    .attr("transform", "translate(" + padding + ",0)")
+                    .call(yAxis);
+        }
+
+        function barchart() {
+            var svg_bar = d3.select("#barchart")
+                            .append("svg")
+                            .attr("id", "svg_bar")
+                            .attr("width", $(window).width() * (5 / 12))
+                            .attr("height", 500),
+                    margin_bar = {top: 20, right: 20, bottom: 30, left: 40},
+                    width_bar = +svg_bar.attr("width") - margin_bar.left - margin_bar.right,
+                    height_bar = +svg_bar.attr("height") - margin_bar.top - margin_bar.bottom;
+
+            var x_bar = d3.scaleBand().rangeRound([0, width_bar]).padding(0.1),
+                    y_bar = d3.scaleLinear().rangeRound([height_bar, 0]);
+
+            var g_bar = svg_bar.append("g")
+                    .attr("transform", "translate(" + margin_bar.left + "," + margin_bar.top + ")");
+
+            x_bar.domain(weights.map(function (d, i) {
+                return i;
+            }));
+            y_bar.domain([0, d3.max(weights, function (d) {
+                return d;
+            })]);
 
 
-        var xAxis = d3.axisBottom(xScale);
+            g_bar.append("g")
+                    .attr("class", "axis axis--x")
+                    .attr("transform", "translate(0," + height_bar + ")")
+                    .call(d3.axisBottom(x_bar));
 
-        var yAxis = d3.axisLeft(yScale);
+            g_bar.append("g")
+                    .attr("class", "axis axis--y")
+                    .call(d3.axisLeft(y_bar).ticks(10, "%"))
+                    .append("text")
+                    .attr("transform", "rotate(-90)")
+                    .attr("y", 6)
+                    .attr("dy", "0.71em")
+                    .attr("text-anchor", "end")
+                    .text("Frequency");
 
-
-        // Create SVG element
-        var svg = d3.select("#scatterplot")  // This is where we put our vis
-                .append("svg")
-                .attr("width", canvas_width)
-                .attr("height", canvas_height)
-
-        svg.append("text")
-                .attr("x", canvas_width)
-                .attr("y", canvas_height)
-                .attr("text-anchor", "end")
-                .text("X: First Component");
-
-        svg.append("text")
-                .attr("y", 6)
-                .attr("dy", ".25em")
-                .attr("transform", "rotate(-90)")
-                .attr("text-anchor", "end")
-                .text("Y: Second Component");
-
-        var tip = svg.append("text")
-                .attr('class', 'tip')
-                .attr('x', 0)
-                .attr('y', 0)
-                .attr('dy', '0.71em')
-                .attr('style', 'text-anchor: middle');
-
-        var tipX = tip.append('tspan')
-                .text('')
-                .attr('id', 'tipX')
-
-
-        var tipY = tip.append('tspan')
-                .text('')
-                .attr('id', 'tipY')
-                .attr('x', 0)
-                .attr('dy', 10);
-
-
-        svg.selectAll("circle")
-                .data(records)
-                .enter()
-                .append("circle")  // Add circle svg
-                .attr("cx", function (d) {
-                    return xScale(d.x);  // Circle's X
-                })
-                .attr("cy", function (d) {  // Circle's Y
-                    return yScale(d.y);
-                })
-                .attr("r", 5) // radius2
-                .attr("opacity", 0.5)
-                .attr("fill", function (d) {
-                    return color_10(d.Class);
-                })
-                .on('mouseover', function (d) {
-                    var xPosition = "X: " + d.x;
-                    var yPosition = "Y: " + d.y;
-                    var mouse = d3.mouse(this).map(function (coordinate) {
-                        return parseInt(coordinate);
+            g_bar.selectAll(".bar")
+                    .data(weights)
+                    .enter().append("rect")
+                    .attr("class", "bar")
+                    .attr("x", function (d, i) {
+                        return x_bar(i);
+                    })
+                    .attr("y", function (d) {
+                        return y_bar(d);
+                    })
+                    .attr("width", x_bar.bandwidth())
+                    .attr("height", function (d) {
+                        return height_bar - y_bar(d);
                     });
-                    tip.attr('x', (mouse[0]))
-                            .attr('y', (mouse[1]));
+        }
 
-                    d3.select('#tipX').text(xPosition);
-                    d3.select('#tipY').text(yPosition).attr('x', mouse[0]);
-                })
-                .on('mouseout', function () {
-                    d3.select('#tipX').text('');
-                    d3.select('#tipY').text('');
-                })
-                .call(d3.drag()
-                        .on('start', dragstarted)
-                        .on('drag', dragged)
-                        .on('end', dragended));
+        function coordinates() {
+            var margin_coor = {top: 30, right: 10, bottom: 10, left: 30},
+                    width_coor = 960 - margin_coor.left - margin_coor.right,
+                    height_coor = 500 - margin_coor.top - margin_coor.bottom;
 
+            var x_coor = d3.scalePoint().range([0, width_coor], 1),
+                    y_coor = {};
 
-        function dragstarted(d) {
-            d3.select(this).raise().classed("active", true);
+            var line_coor = d3.line(),
+                    axis_coor = d3.axisLeft(),
+                    foreground;
 
-        };
+            var svg_coor = d3.select("#coor").append("svg")
+                    .attr("width", width_coor + margin_coor.left + margin_coor.right)
+                    .attr("height", height_coor + margin_coor.top + margin_coor.bottom)
+                    .append("g")
+                    .attr("transform", "translate(" + margin_coor.left + "," + margin_coor.top + ")");
 
-        function dragged(d) {
-            d.x = reversexScale(d3.mouse(this)[0]);
-            d.y = reverseyScale(d3.mouse(this)[1]);
-            console.log(d.x + ',' + d.y + ',' + d.Class);
-            d3.select(this).attr("cx", d3.mouse(this)[0]).attr("cy", d3.mouse(this)[1]);
-            {#            console.log(JSON.stringify(records));#}
-        };
+            var dimensions = d3.keys(features[0]).filter(function (d) {
+                return d != "name" && (y_coor[d] = d3.scaleLinear()
+                                .domain(d3.extent(features, function (p) {
+                                    return +p[d];
+                                }))
+                                .range([height_coor, 0]));
+            });
 
-        function dragended(d) {
-            d3.select(this).classed("active", false);
-        };
+            var index_class = dimensions.indexOf("Class");
+            var index_id = dimensions.indexOf("id");
 
-        svg.append("g")
-                .attr("class", "x axis")
-                .attr("transform", "translate(0," + (canvas_height - padding) + ")")
-                .call(xAxis);
+            if (index_class > -1) {
+                dimensions.splice(index_class, 1);
+            }
 
-        // Add to Y axis
-        svg.append("g")
-                .attr("class", "y axis")
-                .attr("transform", "translate(" + padding + ",0)")
-                .call(yAxis);
+            if (index_id > -1) {
+                dimensions.splice(index_id, 1);
+            }
 
+            x_coor.domain(dimensions);
 
-        var svg_bar = d3.select("#barchart")
-                        .append("svg")
-                        .attr("id","svg_bar")
-                        .attr("width", $(window).width() * (5 / 12))
-                        .attr("height", 500),
-                margin_bar = {top: 20, right: 20, bottom: 30, left: 40},
-                width_bar = +svg_bar.attr("width") - margin_bar.left - margin_bar.right,
-                height_bar = +svg_bar.attr("height") - margin_bar.top - margin_bar.bottom;
+            console.log(dimensions);
 
-        var x_bar = d3.scaleBand().rangeRound([0, width_bar]).padding(0.1),
-                y_bar = d3.scaleLinear().rangeRound([height_bar, 0]);
+            foreground = svg_coor.append("g")
+                    .attr("class", "foreground")
+                    .selectAll("path")
+                    .data(features)
+                    .enter().append("path")
+                    .attr("d", path)
+                    .attr("id", function (d) {
+                        return "path" + d.id;
+                    })
+                    .style("stroke", function (d) {
+                        return color_10(d.Class);
+                    })
+                    .on('mouseover', function (d) {
+                        d3.select(this).style("stroke", "red").style("stroke-width", 4);
+                        notify("showdot", "path" + d.id);
+                        notify("vogueothercoors", "path" + d.id);
+                    })
+                    .on('mouseout', function (d) {
+                        d3.select(this).style("stroke", function (d) {
+                            return color_10(d.Class);
+                        }).style("stroke-width", 1);
+                        notify('hidedot', "path" + d.id);
+                        notify('clearothercoors', "path" + d.id);
+                    });
 
-        var g_bar = svg_bar.append("g")
-                .attr("transform", "translate(" + margin_bar.left + "," + margin_bar.top + ")");
+            // Add a group element for each dimension.
+            var g_coor = svg_coor.selectAll(".dimension")
+                    .data(dimensions)
+                    .enter().append("g")
+                    .attr("class", "dimension")
+                    .attr("transform", function (d) {
+                        return "translate(" + x_coor(d) + ")";
+                    });
 
-        x_bar.domain(weights.map(function (d, i) {
-            return i;
-        }));
-        y_bar.domain([0, d3.max(weights, function (d) {
-            return d;
-        })]);
+            // Add an axis and title.
+            g_coor.append("g")
+                    .attr("class", "axis")
+                    .each(function (d) {
+                        d3.select(this).call(axis_coor.scale(y_coor[d]));
+                    })
+                    .append("text")
+                    .style("text-anchor", "middle")
+                    .attr("y", -9)
+                    .text(function (d) {
+                        return d;
+                    });
 
+            function path(d) {
+                return line_coor(dimensions.map(function (p) {
+                    return [x_coor(p), y_coor[p](d[p])];
+                }));
+            }
+        }
 
-        g_bar.append("g")
-                .attr("class", "axis axis--x")
-                .attr("transform", "translate(0," + height_bar + ")")
-                .call(d3.axisBottom(x_bar));
+        function notify(event, target,addition) {
+            if (event === "showcoor") {
+                console.log(target);
+                var item = target;
+                var item_base = item.substring(3);
+                var aim = "#path" + item_base;
+                d3.select(".foreground").select(aim)
+                        .style("stroke", "red").style("stroke-width", 4);
+                d3.select(".foreground").selectAll("*:not" + "(" + aim + ")")
+                        .style("stroke-opacity", 0.3);
+            }
 
-        g_bar.append("g")
-                .attr("class", "axis axis--y")
-                .call(d3.axisLeft(y_bar).ticks(10, "%"))
-                .append("text")
-                .attr("transform", "rotate(-90)")
-                .attr("y", 6)
-                .attr("dy", "0.71em")
-                .attr("text-anchor", "end")
-                .text("Frequency");
+            if (event === "hidecoor") {
+                console.log(target);
+                var item = target;
+                var item_base = item.substring(3);
+                console.log("itembase"+item_base);
+                console.log(item_base);
+                var aim = "#path" + item_base;
+                d3.select(".foreground").select(aim)
+                        .style("stroke", color_10(addition)).style("stroke-width", 1);
+                d3.select(".foreground").selectAll("*:not" + "(" + aim + ")")
+                        .style("stroke-opacity", 1.0);
+            }
 
-        g_bar.selectAll(".bar")
-                .data(weights)
-                .enter().append("rect")
-                .attr("class", "bar")
-                .attr("x", function (d, i) {
-                    return x_bar(i);
-                })
-                .attr("y", function (d) {
-                    return y_bar(d);
-                })
-                .attr("width", x_bar.bandwidth())
-                .attr("height", function (d) {
-                    return height_bar - y_bar(d);
-                });
+            if (event === "vagueotherdots") {
+                var item = target;
+                var aim = "#" + item;
+                console.log(aim);
+                d3.select("#dotgroup").selectAll("*:not" + "(" + aim + ")")
+                        .style("opacity", 0.3);
+            }
+
+            if (event === "clearotherdots") {
+                var item = target;
+                var aim = "#" + item;
+                console.log(aim);
+                d3.select("#dotgroup").selectAll("*:not" + "(" + aim + ")")
+                        .style("opacity", 1.0);
+            }
+
+            if (event === "showdot") {
+                var item = target;
+                var item_base = item.substring(4);
+                var aim = "#dot" + item_base;
+                d3.select("#dotgroup").selectAll("*:not" + "(" + aim + ")")
+                        .style("opacity", 0.3);
+            }
+
+            if (event === 'hidedot') {
+                var item = target;
+                var item_base = item.substring(4);
+                var aim = "#dot" + item_base;
+                d3.select("#dotgroup").selectAll("*:not" + "(" + aim + ")")
+                        .style("opacity", 1.0);
+            }
+
+            if (event === "vogueothercoors") {
+                var item = target;
+                var aim = "#" + item;
+                d3.select(".foreground").selectAll("*:not" + "(" + aim + ")")
+                        .style("opacity", 0.3);
+            }
+
+            if (event === "clearothercoors") {
+                var item = target;
+                var aim = "#" + item;
+                d3.select(".foreground").selectAll("*:not" + "(" + aim + ")")
+                        .style("opacity", 1.0);
+            }
+        }
 
 
         $(function () {
