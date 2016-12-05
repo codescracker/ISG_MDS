@@ -64,8 +64,8 @@
         <div class="panel-group">
 
             <div class="page-header">
-                <h1 class="panel-heading alert alert-info">D3 MDS Scatterplot</h1>
-                <div class="panel-body">- This is a data visualization using MDS to fulfill dimension reductions</div>
+                <h1 class="panel-heading alert alert-info">Dis-function</h1>
+                <div class="panel-body">- This is the protorype that leverage Data Visualization to train MDS -- a dimensionality reduction algorithm</div>
             </div>
 
         </div>
@@ -79,7 +79,7 @@
         <div class="btn-group" role="group" aria-label="Basic example">
             <button id="btn_post" type="button" class="btn btn-primary center-block">Post New Position</button>
             <button id="btn_weight" type="button" class="btn btn-primary center-block">Calculate New Weight</button>
-            <button id="btn_chart" type="button" class="btn btn-primary center-block">Draw New Scatter Plot</button>
+            <button id="btn_chart" type="button" class="btn btn-primary center-block">Draw New Plots</button>
         </div>
 
     </div>
@@ -111,7 +111,7 @@
         function scatterplot() {
             var canvas_width = $(window).width() * (5 / 12);
             var canvas_height = 500;
-            var padding = 30;  // for chart edges
+            var padding = 45;  // for chart edges
 
             {#        var colorMap = {#}
             {#            "1": "red",#}
@@ -126,47 +126,29 @@
 
             // Create scale functions
             var xScale = d3.scaleLinear()  // xScale is width of graphic
-                    .domain([
-                        d3.min(records, function (d) {
-                            return d.x
-                        }),
-                        d3.max(records, function (d) {
-                            return d.x;  // input domain
-                        })])
+                    .domain([-1.5471277223,1.3273439095])
                     .range([padding, canvas_width - padding]); // output range
 
             var reversexScale = d3.scaleLinear()
                     .domain([padding, canvas_width - padding])
-                    .range([
-                        d3.min(records, function (d) {
-                            return d.x
-                        }),
-                        d3.max(records, function (d) {
-                            return d.x;  // input domain
-                        })]);
+                    .range([-1.5471277223,1.3273439095]);
 
+            console.log("xdomain" + d3.extent(records,function (d) {
+                return d.x;
+            }));
+
+            console.log("ydomain"+ d3.extent(records,function (d) {
+                return d.y;
+            }));
 
             var yScale = d3.scaleLinear()  // yScale is height of graphic
-                    .domain([
-                        d3.min(records, function (d) {
-                            return d.y
-                        })
-                        ,
-                        d3.max(records, function (d) {
-                            return d.y;  // input domain
-                        })])
+                    .domain([-1.5102999293,1.5455200368])
                     .range([canvas_height - padding, padding]);  // remember y starts on top going down so we flip
 
 
             var reverseyScale = d3.scaleLinear()
                     .domain([canvas_height - padding, padding])
-                    .range([
-                        d3.min(records, function (d) {
-                            return d.y;
-                        }),
-                        d3.max(records, function (d) {
-                            return d.y;  // input domain
-                        })]);
+                    .range([-1.5102999293,1.5455200368]);
 
 
             var xAxis = d3.axisBottom(xScale);
@@ -293,7 +275,7 @@
                             .attr("id", "svg_bar")
                             .attr("width", $(window).width() * (5 / 12))
                             .attr("height", 500),
-                    margin_bar = {top: 20, right: 20, bottom: 30, left: 40},
+                    margin_bar = {top: 40, right: 20, bottom: 30, left: 40},
                     width_bar = +svg_bar.attr("width") - margin_bar.left - margin_bar.right,
                     height_bar = +svg_bar.attr("height") - margin_bar.top - margin_bar.bottom;
 
@@ -310,6 +292,18 @@
                 return d;
             })]);
 
+            svg_bar.append("text")
+                    .attr("y", 6)
+                    .attr("dy", ".25em")
+                    .attr("transform", "rotate(-90)")
+                    .attr("text-anchor", "end")
+                    .text("Weight");
+
+            svg_bar.append("text")
+                    .attr("x", width_bar+ margin_bar.left)
+                    .attr("y", height_bar + margin_bar.top + margin_bar.bottom)
+                    .attr("text-anchor", "end")
+                    .text("Features");
 
             g_bar.append("g")
                     .attr("class", "axis axis--x")
@@ -318,13 +312,8 @@
 
             g_bar.append("g")
                     .attr("class", "axis axis--y")
-                    .call(d3.axisLeft(y_bar).ticks(10, "%"))
-                    .append("text")
-                    .attr("transform", "rotate(-90)")
-                    .attr("y", 6)
-                    .attr("dy", "0.71em")
-                    .attr("text-anchor", "end")
-                    .text("Frequency");
+                    .call(d3.axisLeft(y_bar).ticks(10, "%"));
+
 
             g_bar.selectAll(".bar")
                     .data(weights)
