@@ -11,7 +11,7 @@ import time
 # /home/shaowei/PycharmProjects/ISG_MDS/input/wine.csv
 def getOriginalDf():
     # Read the wine data into pandas dataframe, and name the feature
-    df = pd.read_csv('./input/wine_clean.csv')
+    df = pd.read_csv('./input/wine_noise.csv')
     return df
 
 
@@ -177,7 +177,7 @@ def new_weight():
         print("Ready to start the iteration process of getting the optimized weight")
         start_time = time.time()
         res = minimize(object_function, list(INITIAL_WEIGHT), jac=object_func_drive, bounds=bnds,
-                       constraints=cons, method='SLSQP', options={'disp': True, 'maxiter': 5000})
+                       constraints=cons, method='SLSQP', options={'disp': True, 'maxiter': 500})
         print("It costs", time.time()-start_time, "seconds to get optimized solution")
         weight_new = res.x
         print("New Weight", weight_new)
